@@ -67,7 +67,7 @@ def perception_loop(furhat):
                     
                 # 3. NEUTRAL
                 else:
-                    gesture_to_play = random.choice(["Nod", "Blink", "Thoughtful"])
+                    gesture_to_play = random.choice(["Nod", "Blink", "Smile"])
                 
                 if gesture_to_play:
                     # print(f"[Reaction] User is {emotion_name}, performing {gesture_to_play}")
@@ -102,9 +102,9 @@ class InterviewSession:
         if self.current_phase == "INTRO":
             return "Current Phase: INTRODUCTION. Introduce yourself as an empathetic AI interviewer. Ask the candidate to briefly introduce themselves."
         elif self.current_phase == "Q1":
-            return 'Current Phase: QUESTION 1. The user has introduced themselves. Now ask the first interview question (e.g., "Why do you want to work in this area?","Tell me about a challenge you faced").'
+            return 'Current Phase: QUESTION 1. The user has introduced themselves. Now ask the first interview question (e.g., "Why do you want to work in this area?","What is your greatest strength?").'
         elif self.current_phase == "Q2":
-            return 'Current Phase: QUESTION 2. Ackowledge their previous answer. Now ask the second, slightly harder interview question (e.g., "What is your greatest strength?").'
+            return 'Current Phase: QUESTION 2. Ackowledge their previous answer. Now ask the second interview question based on the user emotion of the last speech (e.g., "Tell me about a challenge you faced"). If the user was positive and confident, the question can be slightly harder. If the user was negative and anxious, the question can be easier.'
         elif self.current_phase == "CLOSING":
             return "Current Phase: CLOSING. Thank the candidate for their time. Provide a brief, encouraging remark and say goodbye. Do not ask more questions."
         return ""
@@ -150,33 +150,33 @@ You must adapt your verbal response and gestures based on the user's emotion as 
 
 1. **HAPPINESS**:
    - *Verbal*: Be enthusiastic. Use phrases like "Great!", "I love that energy.", "That's a strong point."
-   - *Gestures*: BigSmile, Nod, OpenEyes.
+   - *Possible Gestures*: BigSmile, Nod, OpenEyes, Smile, BrowRaise, Oh.
 
 2. **FEAR / ANXIETY**:
    - *Verbal*: Be calming and reassuring. Speak in a supportive tone. "Take your time.", "There is no rush.", "You are doing great."
-   - *Gestures*: Smile (gentle), Nod (slow/encouraging), Blink.
+   - *PossibleGestures*: Smile, Nod, Blink, BigSmile.
 
 3. **SADNESS**:
    - *Verbal*: Show empathy. "I understand that must have been difficult.", "Thank you for sharing that personal experience."
-   - *Gestures*: ExpressSad (briefly to mirror), Nod (slowly), GazeAway (respectfully).
+   - *PossibleGestures*: ExpressSad, Nod, GazeAway, Smile.
 
 4. **SURPRISE**:
    - *Verbal*: Clarify or acknowledge. "I know that might be unexpected.", "Let me explain further."
-   - *Gestures*: BrowRaise, Oh, Smile.
+   - *Possible Gestures*: BrowRaise, Oh, Smile, BigSmile, Nod.
 
 5. **ANGER / DISGUST**:
    - *Verbal*: De-escalate and validate. "I see you feel strongly about this.", "That sounds frustrating.", "Let's move to a topic you prefer."
-   - *Gestures*: Nod (attentive), Thoughtful, BrowFrown (briefly).
+   - *Possible Gestures*: Nod, Thoughtful, BrowFrown, Smile, BigSmile.
 
 6. **NEUTRAL**:
    - *Verbal*: Professional, supportive and polite. Keep the flow moving. "Good.", "Let's proceed.", "Interesting."
-   - *Gestures*: Nod, Blink, Smile (occasional).
+   - *Possible Gestures*: Nod, Blink, Smile, BigSmile.
 
 ### OUTPUT FORMAT (STRICT JSON)
 You must output ONLY valid JSON.
 {
   "output": "Your spoken response here.",
-  "gestures_every_2s": [
+  "gestures_every_3s": [
     {
       "name": "Smile",
     },
@@ -190,8 +190,8 @@ You must output ONLY valid JSON.
 }
 It means that you will say "bla bla bla" and perform the following gestures:
 - Smile first
-- Nod after 2 seconds
-- Close eyes after 4 seconds
+- Nod after 3 seconds
+- Close eyes after 6 seconds
 
 You can do the following gestures:
 [
@@ -312,7 +312,7 @@ def main():
     
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "assistant", "content": json.dumps({"output": intro_text, "gestures_every_2s": []})}
+        {"role": "assistant", "content": json.dumps({"output": intro_text, "gestures_every_3s": []})}
     ]
 
     # 5. MAIN CONVERSATION LOOP
@@ -337,9 +337,13 @@ def main():
         
         emotion_desc = f"{current_state['emotion_name']} (confidence: {current_state['confidence']:.2f})"
         phase_instruction = session.get_phase_instruction()
+        
+        # Debug prints: Detected Emotion, Instruction for this turn.
+        print(f"Detected Emotion: {emotion_desc}")
+        print(f"Instruction: {phase_instruction}")
 
         # Build prompt
-        user_prompt = f"""
+        user_prompt = f"""b
 The user input is: {user_input}
 The user's current facial expression is: {emotion_desc}
 Instruction for this turn: {phase_instruction}
@@ -354,7 +358,7 @@ Instruction for this turn: {phase_instruction}
             # Parse Response
             response_data = json.loads(response.content)
             speech_text = response_data.get("output", "I see.")
-            gestures = response_data.get("gestures_every_2s", [])
+            gestures = response_data.get("gestures_every_3s", [])
             
             # Speak & Act (Parallel)
             gesture_thread = threading.Thread(target=perform_gestures, args=(furhat, gestures))
